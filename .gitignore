@@ -1,0 +1,20 @@
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Logs
+*.log
+
+# Firebase
+.firebase/
+.env.*.local

@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Chart chrome, ink and the 8-slot categorical palette (validated for color-vision
+   deficiencies in both modes). Each app keeps one slot everywhere. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-muted: #6f6d68;
+  --line: #e1e0d9;
+  --axis: #c3c2b7;
+  --hover: #f0efec;
+  --sel: #e6e5df;
+  --accent: #2a78d6;
+  --good: #006300;
+  --bad: #b42323;
+  --warn: #8a5a00;
+  --s0: #2a78d6;
+  --s1: #eb6834;
+  --s2: #1baf7a;
+  --s3: #eda100;
+  --s4: #e87ba4;
+  --s5: #008300;
+  --s6: #4a3aa7;
+  --s7: #e34948;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #9a9890;
+    --line: #2c2c2a;
+    --axis: #383835;
+    --hover: #242423;
+    --sel: #30302e;
+    --accent: #3987e5;
+    --good: #0ca30c;
+    --bad: #e66767;
+    --warn: #fab219;
+    --s0: #3987e5;
+    --s1: #d95926;
+    --s2: #199e70;
+    --s3: #c98500;
+    --s4: #d55181;
+    --s5: #008300;
+    --s6: #9085e9;
+    --s7: #e66767;
+  }
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-line text-ink-2 hover:bg-hover;
+  }
+  .btn-danger {
+    @apply btn border border-line text-[color:var(--bad)] hover:bg-hover;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-page px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink-2;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

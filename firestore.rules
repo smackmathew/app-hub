@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Everything lives under users/{uid}, and only that signed-in user can read it.
+//
+// The web app writes only its own app list (name, URL, where it's built...) and marks inbox
+// items done/open. Numbers, sales, conversations and integration status are written by the
+// Cloud Functions (Admin SDK, which bypasses these rules). Service credentials
+// (integration_secrets) and webhook keys (ingest_keys) have no rules at all, so no browser
+// can ever read them.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validApp(d) {
+      return d.keys().hasOnly(["name", "url", "platform", "color", "notes", "created_at"])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 80
+        && (d.url == null || (d.url is string && d.url.size() <= 300))
+        && d.platform is string && d.platform.size() <= 40
+        && d.color is int && d.color >= 0 && d.color < 8
+        && (!("notes" in d) || (d.notes is string && d.notes.size() <= 1000))
+        && d.created_at is timestamp;
+    }
+
+    match /users/{uid} {
+      match /apps/{appId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validApp(request.resource.data)
+          && request.resource.data.created_at == request.time;
+        allow update: if isOwner(uid) && validApp(request.resource.data)
+          && request.resource.data.created_at == resource.data.created_at;
+        // Deleting goes through the removeApp function, which also removes the app's data.
+
+        match /integrations/{provider} {
+          allow read: if isOwner(uid);
+        }
+        match /daily/{day} {
+          allow read: if isOwner(uid);
+        }
+      }
+
+      match /inbox/{itemId} {
+        allow read: if isOwner(uid);
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])
+          && request.resource.data.status in ["open", "closed"];
+      }
+
+      match /sales/{saleId} {
+        allow read: if isOwner(uid);
+      }
+    }
+  }
+}
