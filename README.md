@@ -60,6 +60,29 @@ A Firebase app (the same setup as the household dashboard):
   which no browser can read). The web app sends them once, when connecting, and can't read
   them back.
 
+## Deploying from GitHub (no installs)
+
+The **Deploy** workflow (`.github/workflows/deploy.yml`) builds and deploys from GitHub
+Actions, after every change to `main` and whenever you click **Run workflow**. It needs a
+Google service account key for your Firebase project; it reads the project ID and the web
+app's settings from Firebase with it, so there are no settings files to fill in.
+
+1. Do step 1 of "Putting it online" below in the Firebase console (project on Blaze,
+   Email/Password sign-in, Firestore, a registered Web app).
+2. In the [Google Cloud console](https://console.cloud.google.com) (same project) →
+   **IAM & Admin → Service Accounts → Create service account**, named e.g. `github-deploy`, with
+   these roles: Firebase Admin, Cloud Functions Admin, Cloud Run Admin, Cloud Scheduler Admin,
+   Artifact Registry Administrator, Service Account User, Service Usage Admin.
+3. Open the account → **Keys → Add key → Create new key → JSON**. A file downloads.
+4. In this repository on GitHub → **Settings → Secrets and variables → Actions**:
+   - **Secrets → New repository secret**: name `FIREBASE_SERVICE_ACCOUNT`, value: the whole
+     downloaded file. Then delete the file from your computer.
+   - **Variables → New repository variable** (optional): name `TIME_ZONE`, value e.g.
+     `America/Chicago`. Defaults to `America/New_York`.
+5. **Actions → Deploy → Run workflow.** When it finishes, the run's summary shows your
+   dashboard's address.
+6. Create your account there, then turn off sign-ups (steps 5 and 6 below).
+
 ## Putting it online
 
 You need a Firebase project on the **Blaze** plan (Cloud Functions and scheduled jobs require it;

@@ -1,0 +1,83 @@
+# Puts the dashboard online: builds it and runs `firebase deploy` from GitHub, so nothing
+# needs installing on your computer. Runs when you click "Run workflow" (Actions tab →
+# Deploy) and after every change to main.
+#
+# Needs one repository secret, FIREBASE_SERVICE_ACCOUNT: a Google service account key
+# (JSON) for your Firebase project. The project ID and the web app's settings are read
+# from Firebase using that key. Optional repository variable: TIME_ZONE (e.g.
+# America/Chicago; default America/New_York). README → "Deploying from GitHub".
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for the Firebase key
+        id: key
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret first (README → Deploying from GitHub)."
+              exit 1
+            fi
+            echo "::notice::Not deploying: the FIREBASE_SERVICE_ACCOUNT secret isn't set up yet."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+          project_id=$(jq -r '.project_id // empty' "$RUNNER_TEMP/service-account.json" 2>/dev/null || true)
+          if [ -z "$project_id" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT isn't a service account key. Paste the whole downloaded .json file."
+            exit 1
+          fi
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/service-account.json" >> "$GITHUB_ENV"
+          echo "PROJECT_ID=$project_id" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            functions/package-lock.json
+      - name: Install
+        if: steps.key.outputs.ready == 'true'
+        run: |
+          npm ci --prefix frontend
+          npm ci --prefix functions
+
+      - name: Write settings
+        if: steps.key.outputs.ready == 'true'
+        env:
+          TIME_ZONE: ${{ vars.TIME_ZONE || 'America/New_York' }}
+        run: |
+          npx --prefix frontend firebase apps:sdkconfig WEB --project "$PROJECT_ID" --json > "$RUNNER_TEMP/sdk.json" || {
+            echo "::error::Couldn't read the web app's settings. Check the project has a Web app (Project settings → Your apps) and the key has the Firebase Admin role."
+            cat "$RUNNER_TEMP/sdk.json"
+            exit 1
+          }
+          jq -r '.result.sdkConfig | "VITE_FIREBASE_API_KEY=\(.apiKey)\nVITE_FIREBASE_AUTH_DOMAIN=\(.authDomain)\nVITE_FIREBASE_PROJECT_ID=\(.projectId)\nVITE_FIREBASE_APP_ID=\(.appId)"' \
+            "$RUNNER_TEMP/sdk.json" > frontend/.env.production.local
+          echo "TIME_ZONE=$TIME_ZONE" > functions/.env
+          echo "Deploying to $PROJECT_ID (time zone $TIME_ZONE)"
+
+      - name: Deploy
+        if: steps.key.outputs.ready == 'true'
+        run: npx --prefix frontend firebase deploy --project "$PROJECT_ID" --non-interactive --force
+
+      - name: Dashboard address
+        if: steps.key.outputs.ready == 'true'
+        run: echo "::notice::Your dashboard is at https://$PROJECT_ID.web.app"
