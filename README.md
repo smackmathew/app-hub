@@ -63,7 +63,8 @@ A Firebase app (the same setup as the household dashboard):
 ## Deploying from GitHub (no installs)
 
 The **Deploy** workflow (`.github/workflows/deploy.yml`) builds and deploys from GitHub
-Actions, after every change to `main` and whenever you click **Run workflow**. It needs a
+Actions when you click **Run workflow**. **Use a Firebase project that holds nothing else**:
+a deploy replaces the project's Firestore rules, indexes and Hosting site. It needs a
 Google service account key for your Firebase project; it reads the project ID and the web
 app's settings from Firebase with it, so there are no settings files to fill in.
 

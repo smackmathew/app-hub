@@ -1,6 +1,10 @@
 # Puts the dashboard online: builds it and runs `firebase deploy` from GitHub, so nothing
-# needs installing on your computer. Runs when you click "Run workflow" (Actions tab →
-# Deploy) and after every change to main.
+# needs installing on your computer. Runs only when you click "Run workflow" (Actions tab →
+# Deploy).
+#
+# Use a Firebase project that holds nothing but App Hub: a deploy replaces the project's
+# Firestore rules, indexes and Hosting site. It never deletes Cloud Functions it doesn't
+# know about: if the project has others, the deploy stops instead.
 #
 # Needs one repository secret, FIREBASE_SERVICE_ACCOUNT: a Google service account key
 # (JSON) for your Firebase project. The project ID and the web app's settings are read
@@ -10,8 +14,6 @@ name: Deploy
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 concurrency: deploy
 
@@ -25,13 +27,8 @@ jobs:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$SERVICE_ACCOUNT" ]; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret first (README → Deploying from GitHub)."
-              exit 1
-            fi
-            echo "::notice::Not deploying: the FIREBASE_SERVICE_ACCOUNT secret isn't set up yet."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret first (README → Deploying from GitHub)."
+            exit 1
           fi
           printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
           project_id=$(jq -r '.project_id // empty' "$RUNNER_TEMP/service-account.json" 2>/dev/null || true)
@@ -76,7 +73,7 @@ jobs:
 
       - name: Deploy
         if: steps.key.outputs.ready == 'true'
-        run: npx --prefix frontend firebase deploy --project "$PROJECT_ID" --non-interactive --force
+        run: npx --prefix frontend firebase deploy --project "$PROJECT_ID" --non-interactive
 
       - name: Dashboard address
         if: steps.key.outputs.ready == 'true'
